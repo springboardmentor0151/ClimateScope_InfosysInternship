@@ -1,117 +1,74 @@
-# Climatescope Project
+# ClimateScope: Visualizing Global Weather Trends
 
-## About
-This project analyzes weather data from around the world using the Global Weather Repository dataset from Kaggle.
+## Overview
+Analysis of global weather patterns using the Global Weather Repository dataset from Kaggle. This project aims to uncover seasonal trends, regional variations, and extreme weather events through data analysis and visualization.
+
+## Dataset
+- **Source**: [Global Weather Repository - Kaggle](https://www.kaggle.com/datasets/nelgiriyewithana/global-weather-repository)
+- **Records**: 107,573 observations
+- **Coverage**: 211 countries, 254 locations
+- **Time Period**: 18 months (May 2024 - Nov 2025)
+- **Variables**: Temperature, humidity, precipitation, wind speed, air quality metrics
 
 ## Project Structure
 ```
 climatescope-project/
 ├── data/
-│   ├── raw/          # Original dataset (not tracked in git)
-│   ├── processed/    # Cleaned data
-│   └── outputs/      # Analysis results
-├── notebooks/        # Jupyter notebooks for exploration
-├── scripts/          # Python scripts
-│   ├── data_cleaning.py
-│   ├── data_analysis.py
-│   └── visualizations.py
-├── docs/             # Documentation
-└── app/              # Streamlit app (future)
+│   ├── processed/         # Cleaned datasets
+│   └── outputs/           # Analysis reports
+├── scripts/
+│   ├── data_cleaning.py   # Data preprocessing pipeline
+│   └── data_analysis.py   # Exploratory analysis
+└── docs/
+    └── milestone1_summary.md  # Detailed findings
 ```
 
-## Setup Instructions
+## Setup
 
-### 1. Clone the Repository
+### Installation
 ```bash
+# Clone repository
 git clone https://github.com/namannnt/-climatescope-project.git
 cd climatescope-project
-```
 
-### 2. Create Virtual Environment
-```bash
+# Create virtual environment
 python -m venv venv
-```
+.\venv\Scripts\Activate.ps1  # Windows
 
-### 3. Activate Virtual Environment
-**Windows PowerShell:**
-```powershell
-.\venv\Scripts\Activate.ps1
-```
-
-**Windows CMD:**
-```cmd
-venv\Scripts\activate.bat
-```
-
-**Linux/Mac:**
-```bash
-source venv/bin/activate
-```
-
-### 4. Install Dependencies
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 5. Download Dataset
-- Download the Global Weather Repository dataset from Kaggle
-- Place the dataset in `data/raw/` folder
-
-## Workflow
-
-### Working on a New Feature
+### Run Scripts
 ```bash
-# Create and switch to new branch
-git checkout -b feature/your-feature-name
+# Data cleaning
+python scripts/data_cleaning.py
 
-# Make your changes, then commit
-git add .
-git commit -m "Description of changes"
-
-# Push to GitHub
-git push origin feature/your-feature-name
+# Data analysis
+python scripts/data_analysis.py
 ```
 
-### After PR is Merged
-```bash
-# Switch back to main and update
-git checkout main
-git pull origin main
-```
+## Milestones
 
-## Progress
+### ✅ Milestone 1: Data Preparation & Analysis (Complete)
+- Data cleaning and preprocessing
+- Quality assessment (100% completeness, 0 duplicates)
+- Statistical analysis and reporting
+- Geographic and temporal coverage analysis
 
-### Milestone 1: Data Preparation & Initial Analysis (Completed)
-- [x] Environment setup and dependency installation
-- [x] Dataset acquisition from Kaggle (107,573 records)
-- [x] Comprehensive data quality assessment
-- [x] Data cleaning and preprocessing pipeline
-- [x] Temporal feature engineering
-- [x] Statistical analysis and reporting
-- [x] Data aggregation (daily country-level metrics)
-- [x] Documentation and code organization
+### 🔄 Milestone 2: Visualization (In Progress)
+- Interactive charts with Plotly
+- Geographic heat maps
+- Dashboard development with Streamlit
 
-### Milestone 2: Data Visualization (In Progress)
-- [ ] Temperature trend visualizations
-- [ ] Geographic heat maps
-- [ ] Air quality distribution charts
-- [ ] Interactive Plotly dashboards
-- [ ] Correlation analysis
+## Key Findings
+- **Temperature**: Global average 22.54°C (range: -24.9°C to 49.2°C)
+- **Air Quality**: 52.2% locations have "Good" rating
+- **Coverage**: 211 countries analyzed across 18 months
+- **Data Quality**: Zero missing values, zero duplicates
 
-## Project Overview
-
-This project is part of an internship focused on climate data analysis. The dataset contains comprehensive weather and air quality information from 211 countries and 254 unique locations worldwide, spanning 18 months of observations.
-
-### Key Features
-- **Data Cleaning Pipeline**: Automated preprocessing and validation
-- **Exploratory Analysis**: Comprehensive statistical analysis of weather patterns
-- **Air Quality Assessment**: PM2.5, PM10, and EPA index analysis
-- **Geographic Coverage**: Global dataset with 107,573+ observations
-
-### Technologies Used
-- **Python 3.x**: Core programming language
-- **Pandas**: Data manipulation and analysis
-- **NumPy**: Numerical computations
-- **Plotly**: Interactive visualizations (upcoming)
-- **Streamlit**: Dashboard development (upcoming)
-- **Folium**: Geographic visualizations (upcoming)
+## Technologies
+- Python 3.x
+- Pandas, NumPy
+- Plotly, Streamlit (upcoming)
+- Folium (upcoming)

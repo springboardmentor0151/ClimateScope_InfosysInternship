@@ -15,11 +15,15 @@ ENV/
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Data files
-data/raw/*.csv
-data/raw/*.zip
+# Data files - don't upload large datasets
+data/raw/
 *.csv
 *.zip
+GlobalWeatherRepository.csv
+
+# Processed data (keep structure, ignore files)
+data/processed/*.csv
+data/outputs/*.csv
 
 # IDE
 .vscode/
@@ -30,6 +34,14 @@ data/raw/*.zip
 # OS
 .DS_Store
 Thumbs.db
+
+# Database
+*.db
+state.db
+
+# Documentation (internal)
+notes.txt
+SUBMISSION_GUIDE.md
 
 # Streamlit
 .streamlit/secrets.toml
