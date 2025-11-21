@@ -1,1 +1,0 @@
-# ClimateScope_InfosysInternship
