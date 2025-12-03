@@ -1,6 +1,6 @@
 """
 ClimateScope Dashboard - Fixed Version
-Author: Sanskriti
+Author: Naman Mittal
 """
 
 import streamlit as st

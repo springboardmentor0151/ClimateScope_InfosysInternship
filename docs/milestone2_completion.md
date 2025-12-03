@@ -2,7 +2,7 @@
 
 ## Project: ClimateScope - Global Weather Trends Analysis
 
-**Author**: Sanskriti  
+**Author**: Naman Mittal
 **Completion Date**: December 2024  
 **Status**: ✅ Complete
 
