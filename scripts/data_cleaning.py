@@ -5,7 +5,7 @@ Global Weather Repository Dataset Analysis
 This script performs comprehensive data cleaning, validation, and preprocessing
 on the Global Weather Repository dataset from Kaggle.
 
-Author: Naman Mittal
+Author: Naman
 Date: November 2025
 """
 
@@ -30,19 +30,7 @@ def load_data(filename):
 
 
 def inspect_data(df):
-    """
-    Perform comprehensive data inspection and quality assessment.
-    
-    Parameters:
-    -----------
-    df : pandas.DataFrame
-        Raw dataset to inspect
-        
-    Returns:
-    --------
-    pandas.DataFrame
-        Dataset with datetime column added
-    """
+   
     print("\n" + "="*60)
     print("DATA INSPECTION AND QUALITY ASSESSMENT")
     print("="*60)
