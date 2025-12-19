@@ -632,7 +632,7 @@ aggregation = st.sidebar.selectbox("⏱ Time Aggregation", ["Daily","Monthly","S
 normalize = st.sidebar.checkbox("🔢 Normalize Metric (0–1)")
 threshold = st.sidebar.number_input("🔥 Extreme Event Threshold", value=35.0, step=0.5)
 
-# =====================================================
+# # =====================================================
 # FILTER DATA
 # =====================================================
 @st.cache_data(show_spinner=False)
@@ -649,8 +649,19 @@ def filter_data(countries, start, end, metric, normalize):
             d = d.assign(**{metric: (d[metric] - mn) / (mx - mn)})
     return d
 
-filtered = filter_data(tuple(countries), date_range[0], date_range[1], metric, normalize)
-
+# Remove the first filter_data call and only use the checked version
+if len(date_range) == 2:
+    filtered = filter_data(
+        tuple(countries), 
+        date_range[0], 
+        date_range[1], 
+        metric, 
+        normalize
+    )
+else:
+    # Handle the case when date range is incomplete
+    st.warning("Please select both start and end dates")
+    filtered = df  # or use default dates
 # =====================================================
 # ENHANCED KPI SECTION
 # =====================================================
