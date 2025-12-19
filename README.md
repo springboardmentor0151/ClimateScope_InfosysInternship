@@ -148,15 +148,3 @@ This project is for educational and internship purposes under Infosys Springboar
 
 ⭐ If you find this project insightful, feel free to explore and provide feedback!
 
-yaml
-Copy code
-
----
-
-If you want, I can also:
-- Customize it **exactly as per Infosys mentor rubric**
-- Shorten it for **resume/GitHub highlight**
-- Add **screenshots section**
-- Add **badges (Python, Streamlit, Infosys Springboard)**
-
-Just tell me 👍
