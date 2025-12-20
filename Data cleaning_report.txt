@@ -1,0 +1,8 @@
+WEATHER DATA CLEANING REPORT
+==================================================
+Original dataset: 107,378 rows, 41 columns
+Final dataset: 107,378 rows, 47 columns
+Rows removed: 0
+Missing values handled: 0
+Remaining missing values: 7189
+New features created: 6
