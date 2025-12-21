@@ -4,9 +4,6 @@ Global Weather Repository Dataset Analysis
 
 This script performs comprehensive data cleaning, validation, and preprocessing
 on the Global Weather Repository dataset from Kaggle.
-
-Author: Naman
-Date: November 2025
 """
 
 import pandas as pd

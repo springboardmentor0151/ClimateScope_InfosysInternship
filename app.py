@@ -1,6 +1,5 @@
 """
 ClimateScope Dashboard - Fixed Version
-Author: Naman Mittal
 """
 
 import streamlit as st
@@ -2588,7 +2587,7 @@ def main():
     st.markdown("---")
     st.markdown("""
         <div style='text-align: center; color: #666;'>
-            <p>ClimateScope | 107,573 Records | 211 Countries | Author: Naman</p>
+            <p>ClimateScope | 107,573 Records | 211 Countries</p>
         </div>
     """, unsafe_allow_html=True)
 

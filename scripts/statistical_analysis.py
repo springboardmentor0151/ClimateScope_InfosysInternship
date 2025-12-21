@@ -1,6 +1,5 @@
 """
 Statistical Analysis Script - Milestone 2
-Author: Naman Mittal
 """
 
 import pandas as pd

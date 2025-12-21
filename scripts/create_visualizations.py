@@ -1,8 +1,6 @@
 """
 Visualization Creation Script - Milestone 2
 Creates interactive charts and plots for weather data analysis
-
-Author: Naman Mittal
 """
 
 import pandas as pd
