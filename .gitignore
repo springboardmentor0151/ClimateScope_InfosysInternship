@@ -17,12 +17,9 @@ ENV/
 
 # Data files - don't upload large datasets
 data/raw/
-*.csv
 *.zip
-GlobalWeatherRepository.csv
 
 # Processed data (keep structure, ignore files)
-data/processed/*.csv
 data/outputs/*.csv
 
 # IDE
