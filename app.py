@@ -664,6 +664,18 @@ def create_area_chart(df, x_col, y_col, title, color='#FF6B6B', height=400,
     
     layout_updates = get_plotly_layout_updates()
     
+    # Remove conflicting keys from layout_updates
+    if 'plot_bgcolor' in layout_updates:
+        layout_updates.pop('plot_bgcolor')
+    if 'paper_bgcolor' in layout_updates:
+        layout_updates.pop('paper_bgcolor')
+    if 'margin' in layout_updates:
+        layout_updates.pop('margin')
+    if 'hovermode' in layout_updates:
+        hovermode = layout_updates.pop('hovermode')
+    else:
+        hovermode = 'x unified'
+    
     # Configure x-axis for categorical data
     if not pd.api.types.is_numeric_dtype(df_clean[x_col]):
         layout_updates['xaxis'] = {
@@ -674,24 +686,9 @@ def create_area_chart(df, x_col, y_col, title, color='#FF6B6B', height=400,
     
     # Check if we should add range slider (only for datetime data)
     if show_rangeslider and pd.api.types.is_datetime64_any_dtype(df_clean[x_col]):
+        if 'xaxis' not in layout_updates:
+            layout_updates['xaxis'] = {}
         layout_updates['xaxis']['rangeslider'] = dict(visible=True, thickness=0.1)
-    
-    # Update layout with all settings
-    if 'hovermode' in layout_updates:
-        # Remove hovermode from layout_updates to avoid duplicate
-        hovermode = layout_updates.pop('hovermode')
-    else:
-        hovermode = 'x unified'
-    
-    # Adjust margins to move title completely outside the plot area
-    margin_updates = {
-        'l': 60,    # left margin
-        'r': 30,    # right margin
-        't': 120,   # top margin (increased significantly)
-        'b': 70,    # bottom margin
-        'pad': 0,   # reset padding
-        'autoexpand': True
-    }
     
     # Update layout with all settings
     fig.update_layout(
@@ -699,23 +696,24 @@ def create_area_chart(df, x_col, y_col, title, color='#FF6B6B', height=400,
             text=title,
             x=0.5,
             xanchor='center',
-            y=1.0,  # Position title at the very top of the container
-            yanchor='bottom',  # Anchor to bottom of title text
+            y=1.0,
+            yanchor='bottom',
             font=dict(
-                size=20,  # Even larger font size
+                size=20,
                 color='white',
                 family='Arial, sans-serif',
-                weight='bold'  # Make it bold
+                weight='bold'
             ),
-            pad=dict(t=0, b=40)  # Add more padding below title
+            pad=dict(t=0, b=40)
         ),
         height=height,
         showlegend=False,
         xaxis_title=xaxis_title if xaxis_title else x_col,
         yaxis_title=yaxis_title if yaxis_title else y_col,
         hovermode=hovermode,
-        margin=margin_updates,
+        margin=dict(l=60, r=30, t=120, b=70, pad=0),
         plot_bgcolor='rgba(0,0,0,0.02)',
+        paper_bgcolor='rgba(0,0,0,0)',
         **layout_updates
     )
     return fig
