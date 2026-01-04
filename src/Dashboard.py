@@ -107,11 +107,74 @@ st.set_page_config(
 @st.cache_data
 def load_data():
     df = pd.read_csv("data/processed/cleaned_weather.csv")
+    
+    
+    
+    
 
     # datetime safe
     df["last_updated"] = pd.to_datetime(df["last_updated"], errors="coerce")
+    # -------------------------------
+# Heat Index (Feels Like Temp)
+# Formula valid for temp >= 27°C and humidity >= 40%
+# -------------------------------
+    def calculate_heat_index(temp_c, humidity):
+        if pd.isna(temp_c) or pd.isna(humidity):
+            return np.nan
+        if temp_c < 27 or humidity < 40:
+            return temp_c
 
-    # numeric safety
+        # Convert to Fahrenheit
+        T = (temp_c * 9/5) + 32
+        R = humidity
+
+        HI = (
+            -42.379 +
+            2.04901523 * T +
+            10.14333127 * R -
+            0.22475541 * T * R -
+            0.00683783 * T * T -
+            0.05481717 * R * R +
+            0.00122874 * T * T * R +
+            0.00085282 * T * R * R -
+            0.00000199 * T * T * R * R
+        )
+
+        # Convert back to Celsius
+        return (HI - 32) * 5/9
+
+    df["heat_index"] = df.apply(
+        lambda row: calculate_heat_index(
+            row["temperature_celsius"], row["humidity"]
+        ),
+        axis=1
+    )
+    
+    
+    
+        # -------------------------------
+    # Wind Chill (Feels Cold Temp)
+    # Valid for temp <= 10°C and wind > 4.8 km/h
+    # -------------------------------
+    def calculate_wind_chill(temp_c, wind_kph):
+        if pd.isna(temp_c) or pd.isna(wind_kph):
+            return np.nan
+        if temp_c > 10 or wind_kph < 4.8:
+            return temp_c
+
+        v = wind_kph ** 0.16
+        wc = 13.12 + 0.6215 * temp_c - 11.37 * v + 0.3965 * temp_c * v
+        return wc
+
+    df["wind_chill"] = df.apply(
+        lambda row: calculate_wind_chill(
+            row["temperature_celsius"], row["wind_kph"]
+        ),
+        axis=1
+    )
+    
+    
+# numeric safety
     num_cols = [
         "temperature_celsius",
         "humidity",
@@ -191,12 +254,47 @@ normalize_data = st.sidebar.checkbox(
     "Normalize Data for Comparison", value=False
 )
 
+# ---------- Aggregation ----------
+st.sidebar.subheader("📊 Time Aggregation")
+
+aggregation = st.sidebar.selectbox(
+    "Aggregation Level",
+    ["Daily", "7-Day Moving Average", "Monthly"]
+)
+
+
 # ---------- APPLY FILTERS ----------
 filtered_df = df[
     (df["climate_zone"].isin(selected_zones)) &
     (df["season"].isin(selected_seasons)) &
     (df["temperature_celsius"].between(temp_min, temp_max))
 ]
+# ---------- APPLY AGGREGATION ----------
+plot_df = filtered_df.copy()
+
+if aggregation == "7-Day Moving Average":
+    plot_df = (
+        plot_df
+        .set_index("last_updated")
+        .sort_index()
+        .groupby("country")
+        .rolling("7D")["temperature_celsius"]
+        .mean()
+        .reset_index()
+    )
+
+elif aggregation == "Monthly":
+    plot_df = (
+        plot_df
+        .groupby(
+            [plot_df["last_updated"].dt.to_period("M"), "country"]
+        )["temperature_celsius"]
+        .mean()
+        .reset_index()
+    )
+    plot_df["last_updated"] = plot_df["last_updated"].dt.to_timestamp()
+
+
 
 # ---------- EXPORT ----------
 st.sidebar.divider()
@@ -213,14 +311,6 @@ st.sidebar.download_button(
 
 
 
-# --------------------------------------------------
-# FILTER DATA
-# --------------------------------------------------
-filtered_df = df[
-    (df["climate_zone"].isin(selected_zones)) &
-    (df["season"].isin(selected_seasons)) &
-    (df["temperature_celsius"].between(temp_min, temp_max))
-]
 
 # --------------------------------------------------
 # HEADER
@@ -245,13 +335,15 @@ c4.metric("Avg PM2.5", f"{filtered_df['air_quality_PM2.5'].mean():.0f}")
 # --------------------------------------------------
 # TABS
 # --------------------------------------------------
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🌍 Global Overview",
     "📊 Statistical Analysis",
     "⚠ Extreme Events",
     "🌐 Regional Analysis",
-    "⏱ Time Patterns"
+    "⏱ Time Patterns",
+    "❓ Help & User Guide"
 ])
+
 
 # --------------------------------------------------
 # TAB 1
@@ -278,134 +370,205 @@ with tab1:
 # --------------------------------------------------
 # TAB 2
 # --------------------------------------------------
-st.markdown("## 🔑 Key Weather Indicators")
+with tab2:
+    st.markdown("## 🔑 Key Weather Indicators")
 
-# seaborn theme
-sns.set_theme(style="darkgrid")
+    # seaborn theme
+    sns.set_theme(style="darkgrid")
 
-fig, ax = plt.subplots(2, 2, figsize=(15, 9))
-fig.patch.set_facecolor("#0e1117")  # dark background
+    fig, ax = plt.subplots(2, 2, figsize=(15, 9))
+    fig.patch.set_facecolor("#0e1117")  # dark background
 
-for row in ax:
-    for a in row:
-        a.set_facecolor("#0e1117")
-        a.tick_params(colors="white")
-        a.title.set_color("white")
-        a.xaxis.label.set_color("white")
-        a.yaxis.label.set_color("white")
+    for row in ax:
+        for a in row:
+            a.set_facecolor("#0e1117")
+            a.tick_params(colors="white")
+            a.title.set_color("white")
+            a.xaxis.label.set_color("white")
+            a.yaxis.label.set_color("white")
 
-# 🌡 Temperature
-sns.histplot(
-    filtered_df["temperature_celsius"].dropna(),
-    bins=25,
-    kde=True,
-    color="#ff7f50",
-    edgecolor="black",
-    linewidth=0.6,
-    ax=ax[0, 0]
-)
-ax[0, 0].set_title("🌡 Temperature Distribution (°C)", fontsize=12, weight="bold")
-
-# 💧 Humidity
-sns.histplot(
-    filtered_df["humidity"].dropna(),
-    bins=25,
-    kde=True,
-    color="#4fc3f7",
-    edgecolor="black",
-    linewidth=0.6,
-    ax=ax[0, 1]
-)
-ax[0, 1].set_title("💧 Humidity Distribution (%)", fontsize=12, weight="bold")
-
-# 🌬 Wind
-sns.histplot(
-    filtered_df["wind_kph"].dropna(),
-    bins=25,
-    kde=True,
-    color="#81c784",
-    edgecolor="black",
-    linewidth=0.6,
-    ax=ax[1, 0]
-)
-ax[1, 0].set_title("🌬 Wind Speed Distribution (kph)", fontsize=12, weight="bold")
-
-# 🏭 Air Quality
-if "air_quality_PM2.5" in filtered_df.columns:
+    # 🌡 Temperature
     sns.histplot(
-        filtered_df["air_quality_PM2.5"].dropna(),
+        filtered_df["temperature_celsius"].dropna(),
         bins=25,
         kde=True,
-        color="#ffd54f",
+        color="#ff7f50",
         edgecolor="black",
         linewidth=0.6,
-        ax=ax[1, 1]
+        ax=ax[0, 0]
     )
-    ax[1, 1].set_title("🏭 Air Quality (PM2.5) Distribution", fontsize=12, weight="bold")
+    ax[0, 0].set_title("🌡 Temperature Distribution (°C)", fontsize=12, weight="bold")
 
-plt.tight_layout(pad=2)
-st.pyplot(fig)
-
-st.markdown("---")
-
-
-
-st.markdown("### Correlation Analysis")
-
-corr_cols = [
-    "temperature_celsius",
-    "humidity",
-    "wind_kph",
-    "precip_mm",
-    "air_quality_PM2.5"
-]
-
-corr_df = filtered_df[corr_cols].dropna()
-
-if not corr_df.empty:
-    corr = corr_df.corr()
-
-    # dark theme setup
-    sns.set_theme(style="dark")
-
-    fig, ax = plt.subplots(figsize=(7, 5))
-    fig.patch.set_facecolor("#0e1117")
-    ax.set_facecolor("#0e1117")
-
-    sns.heatmap(
-        corr,
-        cmap="coolwarm",
-        center=0,
-        annot=True,
-        fmt=".2f",
-        annot_kws={
-            "size": 8,
-            "color": "white"
-        },
-        linewidths=0.4,
-        linecolor="#2a2a2a",
-        cbar_kws={
-            "shrink": 0.8
-        },
-        ax=ax
+    # 💧 Humidity
+    sns.histplot(
+        filtered_df["humidity"].dropna(),
+        bins=25,
+        kde=True,
+        color="#4fc3f7",
+        edgecolor="black",
+        linewidth=0.6,
+        ax=ax[0, 1]
     )
+    ax[0, 1].set_title("💧 Humidity Distribution (%)", fontsize=12, weight="bold")
 
-    ax.set_title(
-        "Correlation Between Climate Variables",
-        fontsize=11,
-        fontweight="medium",
-        color="white",
-        pad=10
+    # 🌬 Wind
+    sns.histplot(
+        filtered_df["wind_kph"].dropna(),
+        bins=25,
+        kde=True,
+        color="#81c784",
+        edgecolor="black",
+        linewidth=0.6,
+        ax=ax[1, 0]
     )
+    ax[1, 0].set_title("🌬 Wind Speed Distribution (kph)", fontsize=12, weight="bold")
 
-    ax.tick_params(axis="x", colors="white", labelsize=8, rotation=35)
-    ax.tick_params(axis="y", colors="white", labelsize=8)
+    # 🏭 Air Quality
+    if "air_quality_PM2.5" in filtered_df.columns:
+        sns.histplot(
+            filtered_df["air_quality_PM2.5"].dropna(),
+            bins=25,
+            kde=True,
+            color="#ffd54f",
+            edgecolor="black",
+            linewidth=0.6,
+            ax=ax[1, 1]
+        )
+        ax[1, 1].set_title("🏭 Air Quality (PM2.5) Distribution", fontsize=12, weight="bold")
 
-    plt.tight_layout()
+    plt.tight_layout(pad=2)
     st.pyplot(fig)
 
-else:
-    st.info("Not enough data available for correlation analysis.")
+    st.markdown("---")
+
+
+
+    st.markdown("### Correlation Analysis")
+
+    corr_cols = [
+        "temperature_celsius",
+        "humidity",
+        "wind_kph",
+        "precip_mm",
+        "air_quality_PM2.5"
+    ]
+
+    corr_df = filtered_df[corr_cols].dropna()
+
+    if not corr_df.empty:
+        corr = corr_df.corr()
+
+        # dark theme setup
+        sns.set_theme(style="dark")
+
+        fig, ax = plt.subplots(figsize=(7, 5))
+        fig.patch.set_facecolor("#0e1117")
+        ax.set_facecolor("#0e1117")
+
+        sns.heatmap(
+            corr,
+            cmap="coolwarm",
+            center=0,
+            annot=True,
+            fmt=".2f",
+            annot_kws={
+                "size": 8,
+                "color": "white"
+            },
+            linewidths=0.4,
+            linecolor="#2a2a2a",
+            cbar_kws={
+                "shrink": 0.8
+            },
+            ax=ax
+        )
+
+        ax.set_title(
+            "Correlation Between Climate Variables",
+            fontsize=11,
+            fontweight="medium",
+            color="white",
+            pad=10
+        )
+
+        ax.tick_params(axis="x", colors="white", labelsize=8, rotation=35)
+        ax.tick_params(axis="y", colors="white", labelsize=8)
+
+        plt.tight_layout()
+        st.pyplot(fig)
+
+    else:
+        st.info("Not enough data available for correlation analysis.")
+        
+    # --------------------------------------------------
+    # VIOLIN PLOT (Season-wise Temperature Distribution)
+    # --------------------------------------------------
+    st.markdown("### 🎻 Temperature Distribution by Season")
+
+    fig_violin = px.violin(
+        filtered_df,
+        y="temperature_celsius",
+        x="season",
+        color="season",
+        box=True,
+        points="outliers",
+        color_discrete_sequence=px.colors.qualitative.Set2
+    )
+
+    fig_violin.update_layout(
+        template="plotly_dark",
+        height=420,
+        title={
+            "text": "Season-wise Temperature Distribution",
+            "x": 0.5,
+            "xanchor": "center",
+            "font": {"size": 14}
+        },
+        xaxis_title="Season",
+        yaxis_title="Temperature (°C)",
+        showlegend=False
+    )
+
+    st.plotly_chart(fig_violin, use_container_width=True)
+
+
+
+
+
+with tab3:
+    st.markdown("## ⚠ Extreme Weather Events")
+
+    extreme_df = filtered_df[
+        (filtered_df["temperature_celsius"] > 40) |
+        (filtered_df["wind_kph"] > 50) |
+        (filtered_df["precip_mm"] > 100)
+    ]
+
+    st.markdown("### 🔥 Top Extreme Events")
+    st.dataframe(extreme_df.head(10), use_container_width=True)
+
+    if not extreme_df.empty:
+        monthly_extreme = (
+            extreme_df
+            .groupby(extreme_df["last_updated"].dt.to_period("M"))
+            .size()
+            .reset_index(name="Extreme Events")
+        )
+        monthly_extreme["last_updated"] = monthly_extreme["last_updated"].dt.to_timestamp()
+
+        fig_ext = px.line(
+            monthly_extreme,
+            x="last_updated",
+            y="Extreme Events",
+            markers=True,
+            title="Monthly Extreme Events Trend",
+            template="plotly_dark"
+        )
+
+        st.plotly_chart(fig_ext, use_container_width=True)
+    else:
+        st.info("No extreme events detected for selected filters.")
+
 
 
 # --------------------------------------------------
@@ -424,9 +587,63 @@ with tab4:
 # TAB 5
 # --------------------------------------------------
 with tab5:
-    trend = filtered_df.groupby("month")["temperature_celsius"].mean().reset_index()
-    fig_trend = px.line(trend, x="month", y="temperature_celsius")
+    fig_trend = px.line(
+    plot_df,
+    x="last_updated",
+    y="temperature_celsius",
+    color="country",
+    title=f"Temperature Trend ({aggregation})"
+)
+
+
+
+   
     st.plotly_chart(fig_trend, use_container_width=True)
+    
+        # ---------- AREA CHART ----------
+    st.subheader("🌡 Temperature Trend (Area Chart)")
+
+    fig_area = px.area(
+        plot_df,
+        x="last_updated",
+        y="temperature_celsius",
+        color="country",
+        title=f"Temperature Trend – Area View ({aggregation})",
+    
+    )
+    fig_area.update_traces(opacity=0.6)
+
+    st.plotly_chart(fig_area, use_container_width=True)
+
+
+
+st.write(df[["temperature_celsius", "humidity", "heat_index", "wind_chill"]].head())
+
+
+
+with tab6:
+    st.markdown("## ❓ User Guide")
+
+    st.markdown("""
+### 🎛 Controls
+- Filter by climate zone, season, and temperature
+- Choose aggregation: Daily / 7-Day / Monthly
+
+### 📊 Visuals
+- Line & Area charts show trends
+- Violin & histograms show distributions
+- Heatmap shows correlations
+- Maps show geographic spread
+
+### ⚠ Extreme Events
+- Heatwave > 40°C
+- Heavy rain > 100 mm
+- High wind > 50 kph
+
+### 📥 Export
+- CSV export available in sidebar
+    """)
+
 
 # --------------------------------------------------
 # FOOTER
