@@ -1,5 +1,6 @@
 """
 ClimateScope Dashboard - Fixed Version
+Author: Naman Mittal
 """
 
 import streamlit as st
@@ -9,6 +10,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from pathlib import Path
 import numpy as np
+
+# Import agriculture features
+from agriculture_features import show_agriculture_dashboard
 
 # Try to import scipy, fallback to numpy if not available
 try:
@@ -60,10 +64,84 @@ st.set_page_config(page_title="ClimateScope", page_icon="🌍", layout="wide")
 
 PROCESSED_DATA_PATH = Path("data/processed")
 
+# Column mapping dictionary for flexible data loading
+COLUMN_MAPPINGS = {
+    'temperature_celsius': ['temperature_celsius', 'temp_c', 'temp', 'temperature', 'temp_celsius', 'air_temp'],
+    'humidity': ['humidity', 'humid', 'rh', 'relative_humidity', 'humidity_percent'],
+    'precip_mm': ['precip_mm', 'precipitation', 'rain', 'rainfall', 'precip', 'precipitation_mm'],
+    'wind_kph': ['wind_kph', 'wind_speed', 'wind', 'windspeed', 'wind_speed_kph'],
+    'air_quality_pm2.5': ['air_quality_pm2.5', 'pm2.5', 'pm25', 'pm2_5', 'air_quality'],
+    'country': ['country', 'country_name', 'nation'],
+    'location_name': ['location_name', 'location', 'city', 'place', 'city_name'],
+    'latitude': ['latitude', 'lat'],
+    'longitude': ['longitude', 'lon', 'long'],
+    'last_updated': ['last_updated', 'date', 'datetime', 'timestamp', 'time']
+}
+
+def smart_column_mapping(df):
+    """Automatically map columns to expected names"""
+    df_mapped = df.copy()
+    mapping_applied = {}
+    
+    for target_col, possible_names in COLUMN_MAPPINGS.items():
+        # Check if target column already exists
+        if target_col in df_mapped.columns:
+            continue
+        
+        # Try to find a matching column
+        for possible_name in possible_names:
+            if possible_name.lower() in [col.lower() for col in df_mapped.columns]:
+                # Find the actual column name (case-insensitive)
+                actual_col = [col for col in df_mapped.columns if col.lower() == possible_name.lower()][0]
+                df_mapped = df_mapped.rename(columns={actual_col: target_col})
+                mapping_applied[actual_col] = target_col
+                break
+    
+    return df_mapped, mapping_applied
+
+def add_missing_columns(df):
+    """Add missing columns with default values"""
+    required_columns = {
+        'temperature_celsius': 20.0,
+        'humidity': 60.0,
+        'precip_mm': 0.0,
+        'wind_kph': 10.0,
+        'air_quality_pm2.5': 50.0,
+        'country': 'Unknown',
+        'location_name': 'Unknown',
+        'latitude': 0.0,
+        'longitude': 0.0
+    }
+    
+    added_columns = []
+    for col, default_value in required_columns.items():
+        if col not in df.columns:
+            df[col] = default_value
+            added_columns.append(col)
+    
+    return df, added_columns
+
 @st.cache_data
-def load_data():
+def load_data(uploaded_file=None):
     """Load and perform initial data processing"""
-    df = pd.read_csv(PROCESSED_DATA_PATH / "cleaned_weather_data.csv")
+    if uploaded_file is not None:
+        # Load uploaded file
+        df = pd.read_csv(uploaded_file)
+        
+        # Apply smart column mapping
+        df, mapping_applied = smart_column_mapping(df)
+        
+        # Add missing columns
+        df, added_columns = add_missing_columns(df)
+        
+        # Show mapping info in sidebar
+        if mapping_applied:
+            st.sidebar.success(f"✅ Mapped {len(mapping_applied)} columns automatically")
+        if added_columns:
+            st.sidebar.info(f"ℹ️ Added {len(added_columns)} missing columns with defaults")
+    else:
+        # Load default file
+        df = pd.read_csv(PROCESSED_DATA_PATH / "cleaned_weather_data.csv")
     
     # Handle missing values
     df = handle_missing_values(df)
@@ -664,18 +742,6 @@ def create_area_chart(df, x_col, y_col, title, color='#FF6B6B', height=400,
     
     layout_updates = get_plotly_layout_updates()
     
-    # Remove conflicting keys from layout_updates
-    if 'plot_bgcolor' in layout_updates:
-        layout_updates.pop('plot_bgcolor')
-    if 'paper_bgcolor' in layout_updates:
-        layout_updates.pop('paper_bgcolor')
-    if 'margin' in layout_updates:
-        layout_updates.pop('margin')
-    if 'hovermode' in layout_updates:
-        hovermode = layout_updates.pop('hovermode')
-    else:
-        hovermode = 'x unified'
-    
     # Configure x-axis for categorical data
     if not pd.api.types.is_numeric_dtype(df_clean[x_col]):
         layout_updates['xaxis'] = {
@@ -686,9 +752,28 @@ def create_area_chart(df, x_col, y_col, title, color='#FF6B6B', height=400,
     
     # Check if we should add range slider (only for datetime data)
     if show_rangeslider and pd.api.types.is_datetime64_any_dtype(df_clean[x_col]):
-        if 'xaxis' not in layout_updates:
-            layout_updates['xaxis'] = {}
         layout_updates['xaxis']['rangeslider'] = dict(visible=True, thickness=0.1)
+    
+    # Update layout with all settings
+    if 'hovermode' in layout_updates:
+        # Remove hovermode from layout_updates to avoid duplicate
+        hovermode = layout_updates.pop('hovermode')
+    else:
+        hovermode = 'x unified'
+    
+    # Adjust margins to move title completely outside the plot area
+    margin_updates = {
+        'l': 60,    # left margin
+        'r': 30,    # right margin
+        't': 120,   # top margin (increased significantly)
+        'b': 70,    # bottom margin
+        'pad': 0,   # reset padding
+        'autoexpand': True
+    }
+    
+    # Remove conflicting keys from layout_updates
+    layout_updates_clean = {k: v for k, v in layout_updates.items() 
+                           if k not in ['margin', 'plot_bgcolor', 'paper_bgcolor']}
     
     # Update layout with all settings
     fig.update_layout(
@@ -696,25 +781,24 @@ def create_area_chart(df, x_col, y_col, title, color='#FF6B6B', height=400,
             text=title,
             x=0.5,
             xanchor='center',
-            y=1.0,
-            yanchor='bottom',
+            y=1.0,  # Position title at the very top of the container
+            yanchor='bottom',  # Anchor to bottom of title text
             font=dict(
-                size=20,
+                size=20,  # Even larger font size
                 color='white',
                 family='Arial, sans-serif',
-                weight='bold'
+                weight='bold'  # Make it bold
             ),
-            pad=dict(t=0, b=40)
+            pad=dict(t=0, b=40)  # Add more padding below title
         ),
         height=height,
         showlegend=False,
         xaxis_title=xaxis_title if xaxis_title else x_col,
         yaxis_title=yaxis_title if yaxis_title else y_col,
         hovermode=hovermode,
-        margin=dict(l=60, r=30, t=120, b=70, pad=0),
+        margin=margin_updates,
         plot_bgcolor='rgba(0,0,0,0.02)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        **layout_updates
+        **layout_updates_clean
     )
     return fig
 
@@ -2536,22 +2620,75 @@ def main():
     st.sidebar.title("🌍 ClimateScope")
     st.sidebar.markdown("**Weather Intelligence Dashboard**")
     
-    # Real-time Refresh Button
+    # File Upload Feature
     st.sidebar.markdown("---")
-    if st.sidebar.button("🔄 Refresh Data", help="Reload data and refresh all visualizations"):
-        st.cache_data.clear()
-        st.rerun()
+    st.sidebar.subheader("📁 Data Source")
+    
+    data_source = st.sidebar.radio(
+        "Choose data source:",
+        ["Default Dataset", "Upload CSV File"],
+        help="Use default dataset or upload your own weather data"
+    )
+    
+    uploaded_file = None
+    if data_source == "Upload CSV File":
+        uploaded_file = st.sidebar.file_uploader(
+            "Upload Weather Data (CSV)",
+            type=['csv'],
+            help="Upload a CSV file with weather data. Columns will be auto-mapped."
+        )
+        
+        if uploaded_file:
+            st.sidebar.success("✅ File uploaded successfully!")
+            
+            # Show expected columns
+            with st.sidebar.expander("📋 Expected Columns"):
+                st.markdown("""
+                **Required columns** (or similar names):
+                - temperature_celsius (temp, temp_c)
+                - humidity (humid, rh)
+                - precip_mm (rain, precipitation)
+                - wind_kph (wind_speed, wind)
+                - air_quality_pm2.5 (pm2.5, pm25)
+                - country (country_name)
+                - location_name (city, location)
+                - latitude (lat)
+                - longitude (lon, long)
+                - last_updated (date, datetime)
+                
+                *Missing columns will be added with defaults*
+                """)
     
     # Page Navigation
     st.sidebar.markdown("---")
     page = st.sidebar.radio(
         "Navigate to:",
-        ["Executive Dashboard", "Statistical Analysis", "Climate Trends", "Extreme Events", "Data Processing", "Help"]
+        ["Executive Dashboard", "Statistical Analysis", "Climate Trends", "Extreme Events", "Agriculture Analysis", "Data Processing", "Help"]
     )
     
-    # Load data
-    df = load_data()
-    df = add_derived_metrics(df)
+    # Load data (with or without uploaded file)
+    try:
+        df = load_data(uploaded_file)
+        df = add_derived_metrics(df)
+        
+        # Show data info in sidebar if file uploaded
+        if uploaded_file:
+            st.sidebar.markdown("---")
+            st.sidebar.metric("📊 Total Records", f"{len(df):,}")
+            st.sidebar.metric("🌍 Countries", f"{df['country'].nunique()}")
+            st.sidebar.metric("📍 Locations", f"{df['location_name'].nunique()}")
+            
+    except Exception as e:
+        st.error(f"❌ Error loading data: {str(e)}")
+        st.info("Please check your CSV file format and try again.")
+        st.markdown("""
+        ### Common Issues:
+        - Ensure CSV is properly formatted
+        - Check for missing required columns
+        - Verify date/time format
+        - Remove any special characters
+        """)
+        return
     
     st.sidebar.markdown("---")
     
@@ -2576,6 +2713,8 @@ def main():
         show_climate_trends(filtered_df, filters)
     elif page == "Extreme Events":
         show_extreme_events_page(filtered_df, filters)
+    elif page == "Agriculture Analysis":
+        show_agriculture_dashboard(filtered_df, filters)
     elif page == "Data Processing":
         show_data_processing_page(df)  # Use unfiltered data
     elif page == "Help":
@@ -2585,7 +2724,7 @@ def main():
     st.markdown("---")
     st.markdown("""
         <div style='text-align: center; color: #666;'>
-            <p>ClimateScope | 107,573 Records | 211 Countries</p>
+            <p>ClimateScope | 107,573 Records | 211 Countries | Author: Naman</p>
         </div>
     """, unsafe_allow_html=True)
 
